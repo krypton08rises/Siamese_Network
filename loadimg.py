@@ -72,16 +72,19 @@ def loadimgs(dir_path, n=0):
     # print(str(X_train.shape)+"   "+str(Y_train.shape))
     return X, Y, person_dict
 
-save_path ="/home/kr08rises/My_siamese_implementation/data/"
 
-X_train, Y_train, train_dict = loadimgs("/home/kr08rises/My_siamese_implementation/footprint_dataset/Images_background", n=0)
-with open(os.path.join(save_path,"train.pickle"), "wb") as f:                                                           # saving training tensors on disk
-    pickle.dump((X_train,train_dict),f)
+save_path ="./data/"
+
+Xtrain, Ytrain, train_classes = loadimgs(r"D:\SOP - Object Detection\Informal\Siamese_Network\footprint_dataset"
+                                        r"\Images_background", n=0)
+with open(os.path.join(save_path,"train.pickle"), "wb") as f:                  # saving training tensors on disk
+    pickle.dump((Xtrain,train_classes),f)
 
 
-X_val, Y_val, val_dict = loadimgs("/home/kr08rises/My_siamese_implementation/footprint_dataset/Images_evaluation", n=0)
+Xval, Yval, val_classes = loadimgs(r"D:\SOP - Object Detection\Informal\Siamese_Network\footprint_dataset"
+                                  r"\Images_evaluation", n=0)
 with open(os.path.join(save_path,"val.pickle"), "wb") as f:
-    pickle.dump((X_val,val_dict),f)
+    pickle.dump((Xval,val_classes),f)
 
 # print(X_train.shape)
 # print(person_dict.keys())
@@ -101,7 +104,7 @@ def get_batch(batch_size, s="train"):
         categories = val_classes
         """
 
-    num_people, num_example, w, h, channel = X_train.shape
+    num_people, num_example, w, h, channel = Xtrain.shape
 # """"""
 
     # randomly sample several classes to use in the batch
@@ -120,7 +123,7 @@ def get_batch(batch_size, s="train"):
     for i in range(batch_size):
         category = categories[i]
         idx_1 = rng.randint(0, num_example)
-        pairs[0][i, :, :, :] = X_train[category, idx_1].reshape(h, w, channel)
+        pairs[0][i, :, :, :] = Xtrain[category, idx_1].reshape(h, w, channel)
         idx_2 = rng.randint(0, num_example)
 
         # pick images of same class for 1st half, different for 2nd
@@ -130,7 +133,7 @@ def get_batch(batch_size, s="train"):
             # add a random number to the category modulo n classes to ensure 2nd image has a different category
             category_2 = (category + rng.randint(1, num_people)) % num_people
 
-        pairs[1][i, :, :, :] = X_train[category_2, idx_2].reshape(h, w, channel)
+        pairs[1][i, :, :, :] = Xtrain[category_2, idx_2].reshape(h, w, channel)
 
     return pairs, targets
 
@@ -219,14 +222,14 @@ model.summary()
 optimizer = Adam(lr=0.00006)
 model.compile(loss="binary_crossentropy",optimizer=optimizer)
 
-with open(os.path.join(save_path, "train.pickle"), "rb") as f:
-    (Xtrain, train_classes) = pickle.load(f)
+# with open(os.path.join(save_path, "train.pickle"), "rb") as f:
+#     (Xtrain, train_classes) = pickle.load(f)
 
 print("Training Feet: \n")
 print(list(train_classes.keys()))
 
-with open(os.path.join(save_path, "val.pickle"), "rb") as f:
-    (Xval, val_classes) = pickle.load(f)
+# with open(os.path.join(save_path, "val.pickle"), "rb") as f:
+#     (Xval, val_classes) = pickle.load(f)
 
 print("Validation Feet:", end="\n\n")
 print(list(val_classes.keys()))
@@ -240,17 +243,17 @@ def make_oneshot_task(N, s="val", language=None):
     else:
         X = Xval
         categories = val_classes
-    n_classes, n_examples, w, h = X.shape
+    n_classes, n_examples, w, h, channels = X.shape
 
     indices = rng.randint(0, n_examples, size=(N,))
     if language is not None:  # if language is specified, select characters for that language
         low, high = categories[language]
         if N > high - low:
             raise ValueError("This language ({}) has less than {} letters".format(language, N))
-        categories = rng.choice(range(low, high), size=(N,), replace=False)
+        categories = rng.choice(range(low, high), size=(N,), replace=True)
 
     else:  # if no language specified just pick a bunch of random letters
-        categories = rng.choice(range(n_classes), size=(N,), replace=False)
+        categories = rng.choice(range(n_classes), size=(N,), replace=True)
     true_category = categories[0]
     ex1, ex2 = rng.choice(n_examples, replace=False, size=(2,))
     test_image = np.asarray([X[true_category, ex1, :, :]] * N).reshape(N, w, h, 1)

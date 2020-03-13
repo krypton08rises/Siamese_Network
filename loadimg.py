@@ -4,6 +4,7 @@ import numpy as np
 import numpy.random as rng
 import time
 import pickle
+from sklearn.utils import shuffle
 from keras import Model, Sequential
 from keras.layers import Conv2D, ZeroPadding2D, Activation, Input, concatenate
 from keras.layers.pooling import MaxPooling2D
@@ -11,6 +12,7 @@ from keras.layers.core import Lambda, Flatten, Dense
 from keras.backend import abs
 from keras.regularizers import l2
 from keras.optimizers import Adam
+
 
 # import keras as K
 # from keras.layers.normalization import BatchNormalization
@@ -24,10 +26,10 @@ def loadimgs(dir_path, n=0):
     path => Path of train directory or test directory
     path = "/images background/"
     '''
-    X=[]
+    X = []
     y = []
-    cat_dict = {}                                                           # dictionary of categories
-    person_dict = {}                                                        # dictionary of person
+    cat_dict = {}  # dictionary of categories
+    person_dict = {}  # dictionary of person
     curr_y = n
     # we load every alphabet seperately so   we can isolate them later
     # for dir in os.listdir(path):                                             # for a  person in path, get the photos of that person
@@ -44,47 +46,46 @@ def loadimgs(dir_path, n=0):
         for feet in os.listdir(person_path):
             image_path = os.path.join(person_path, feet)
             image = cv2.imread(image_path)
-            image= cv2.resize(image,(125, 175), interpolation= cv2.INTER_AREA)
+            image = cv2.resize(image, (225, 300), interpolation=cv2.INTER_AREA)
             category_images.append(image)
             y.append(curr_y)
-            curr_y+=1
+            curr_y += 1
 
-           # if i==0:
-                # cv2.imshow('image', image)
-                # print(image_path)
+        # if i==0:
+        # cv2.imshow('image', image)
+        # print(image_path)
 
-            # i+=1
+        # i+=1
 
-        try :
-           X.append(np.stack(category_images))
+        try:
+            X.append(np.stack(category_images))
         except ValueError as e:
             print(e)
             print("error - category_images:", category_images)
         person_dict[person][1] = curr_y - 1
 
-# category_images.append(image)
-# y.append(curr_y)
+    # category_images.append(image)
+    # y.append(curr_y)
     # print(y)
     y = np.vstack(y)
     X = np.stack(X)
     X = X[0:12, :, :, :, :]
-    Y = y[0:12*8]
+    Y = y[0:12 * 8]
     # print(str(X_train.shape)+"   "+str(Y_train.shape))
     return X, Y, person_dict
 
 
-save_path ="./data/"
+save_path = "./data/"
 
-Xtrain, Ytrain, train_classes = loadimgs(r"D:\SOP - Object Detection\Informal\Siamese_Network\footprint_dataset"
-                                        r"\Images_background", n=0)
-with open(os.path.join(save_path,"train.pickle"), "wb") as f:                  # saving training tensors on disk
-    pickle.dump((Xtrain,train_classes),f)
+Xtrain, Ytrain, train_classes = loadimgs(r".\footprint_dataset\Images_background", n=0)
+print(Xtrain.shape)
+with open(os.path.join(save_path, "train.pickle"), "wb") as f:  # saving training tensors on disk
+    pickle.dump((Xtrain, train_classes), f)
 
-
-Xval, Yval, val_classes = loadimgs(r"D:\SOP - Object Detection\Informal\Siamese_Network\footprint_dataset"
-                                  r"\Images_evaluation", n=0)
-with open(os.path.join(save_path,"val.pickle"), "wb") as f:
-    pickle.dump((Xval,val_classes),f)
+Xval, Yval, val_classes = loadimgs(r".\footprint_dataset\Images_evaluation", n=0)
+print(Xval.shape)
+with open(os.path.join(save_path, "val.pickle"), "wb") as f:
+    pickle.dump((Xval, val_classes), f)
 
 # print(X_train.shape)
 # print(person_dict.keys())
@@ -105,12 +106,12 @@ def get_batch(batch_size, s="train"):
         """
 
     num_people, num_example, w, h, channel = Xtrain.shape
-# """"""
+    # """"""
 
     # randomly sample several classes to use in the batch
-    categories = rng.choice(num_people, size=(batch_size,), replace=False)              # shape = (12,)
+    categories = rng.choice(num_people, size=(batch_size,), replace=False)  # shape = (12,)
     # initialize 2 empty arrays for the input image batch
-    pairs = [np.zeros((batch_size, h, w, channel)) for i in range(2)]                # shape = (2, 12
+    pairs = [np.zeros((batch_size, h, w, channel)) for i in range(2)]  # shape = (2, 12
     # print(len(pairs))
     # print(len(pairs[0]))
     # print(len(pairs[0][0]))
@@ -137,6 +138,7 @@ def get_batch(batch_size, s="train"):
 
     return pairs, targets
 
+
 # pairs, targets = get_batch(12, s = "train")
 # print(pairs.shape)
 # print(targets)
@@ -153,7 +155,6 @@ def get_batch(batch_size, s="train"):
 # print(pairs.shape+targets.shape)
 
 
-
 def initialize_weights(shape, dtype=None, name=None):
     """
         The paper, http://www.cs.utoronto.ca/~gkoch/files/msc-thesis.pdf
@@ -162,12 +163,12 @@ def initialize_weights(shape, dtype=None, name=None):
     return np.random.normal(loc=0.0, scale=1e-2, size=shape)
 
 
-def initialize_bias(shape,dtype = None, name=None):
+def initialize_bias(shape, dtype=None, name=None):
     """
         The paper, http://www.cs.utoronto.ca/~gkoch/files/msc-thesis.pdf
         suggests to initialize CNN layer bias with mean as 0.5 and standard deviation of 0.01
     """
-    return np.random.normal(loc = 0.5, scale = 1e-2, size = shape)
+    return np.random.normal(loc=0.5, scale=1e-2, size=shape)
 
 
 def get_siamese_model(input_shape):
@@ -216,20 +217,20 @@ def get_siamese_model(input_shape):
     return siamese_net
 
 
-model = get_siamese_model((125, 175, 3))
+model = get_siamese_model((225, 300, 3))
 model.summary()
 
 optimizer = Adam(lr=0.00006)
-model.compile(loss="binary_crossentropy",optimizer=optimizer)
+model.compile(loss="binary_crossentropy", optimizer=optimizer)
 
-# with open(os.path.join(save_path, "train.pickle"), "rb") as f:
-#     (Xtrain, train_classes) = pickle.load(f)
+with open(os.path.join(save_path, "train.pickle"), "rb") as f:
+    (Xtrain, train_classes) = pickle.load(f)
 
 print("Training Feet: \n")
 print(list(train_classes.keys()))
 
-# with open(os.path.join(save_path, "val.pickle"), "rb") as f:
-#     (Xval, val_classes) = pickle.load(f)
+with open(os.path.join(save_path, "val.pickle"), "rb") as f:
+    (Xval, val_classes) = pickle.load(f)
 
 print("Validation Feet:", end="\n\n")
 print(list(val_classes.keys()))
@@ -256,10 +257,10 @@ def make_oneshot_task(N, s="val", language=None):
         categories = rng.choice(range(n_classes), size=(N,), replace=True)
     true_category = categories[0]
     ex1, ex2 = rng.choice(n_examples, replace=False, size=(2,))
-    test_image = np.asarray([X[true_category, ex1, :, :]] * N).reshape(N, w, h, 1)
+    test_image = np.asarray([X[true_category, ex1, :, :]] * N).reshape(N, h, w, 3)
     support_set = X[categories, indices, :, :]
     support_set[0, :, :] = X[true_category, ex2]
-    support_set = support_set.reshape(N, w, h, 1)
+    support_set = support_set.reshape(N, h, w, 3)
     targets = np.zeros((N,))
     targets[0] = 1
     targets, test_image, support_set = shuffle(targets, test_image, support_set)
@@ -284,11 +285,11 @@ def test_oneshot(model, N, k, s="val", verbose=0):
     return percent_correct
 
 
-evaluate_every = 50 # interval for evaluating on one-shot tasks
+evaluate_every = 100  # interval for evaluating on one-shot tasks
 batch_size = 12
-n_iter = 500 # No. of training iterations
-N_way = 20 # how many classes for testing one-shot tasks
-n_val = 250 # how many one-shot tasks to validate on
+n_iter = 1500  # No. of training iterations
+N_way = 20  # how many classes for testing one-shot tasks
+n_val = 250  # how many one-shot tasks to validate on
 best = -1
 
 model_path = './weights/'
@@ -296,12 +297,12 @@ model_path = './weights/'
 print("Starting training process!")
 print("-------------------------------------")
 t_start = time.time()
-for i in range(1, n_iter+1):
+for i in range(1, n_iter + 1):
     (inputs, targets) = get_batch(batch_size)
     loss = model.train_on_batch(inputs, targets)
     if i % evaluate_every == 0:
         print("\n ------------- \n")
-        print("Time for {0} iterations: {1} mins".format(i, (time.time()-t_start)/60.0))
+        print("Time for {0} iterations: {1} mins".format(i, (time.time() - t_start) / 60.0))
         print("Train Loss: {0}".format(loss))
         val_acc = test_oneshot(model, N_way, n_val, verbose=True)
         model.save_weights(os.path.join(model_path, 'weights.{}.h5'.format(i)))
@@ -309,5 +310,4 @@ for i in range(1, n_iter+1):
             print("Current best: {0}, previous best: {1}".format(val_acc, best))
             best = val_acc
 t_end = time.time
-print("Time Passed : " + str(t_end-t_start))
-
+# print("Time Passed : " + str(t_end - t_start))

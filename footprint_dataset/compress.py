@@ -9,4 +9,4 @@ for person in os.listdir(r"./Images_evaluation/"):
         img = Image.open(image_path)
         img.save(r"./Compressed_evaluation/" + person + "/" + feet[0:-3] + "jpg")
         # print(feet[0:-3] + "jpg")
-print("Success!")
+# print("Success!")
